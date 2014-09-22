@@ -1,2 +1,18 @@
 note:
   description: 'Just a note'
+url:
+  description: 'An URL'
+  fields:
+    url: 'URL: '
+health:
+  description: 'A health issue'
+work:
+  description: 'You did something for work'
+  fields:
+    minutes_spent: 'Minutes spent: '
+home:
+  description: 'You did something for home'
+idea:
+  description: 'An idea'
+dream:
+  description: 'A dream you remember'
