@@ -1,6 +1,8 @@
 import sys
-from utils import get_home_dir_path, load_yaml_resource
+from utils import (get_home_dir_path, load_yaml_resource, get_terminal_size,
+                   bcolors)
 import logging
+import textwrap
 import uuid
 import argparse
 import json
@@ -10,7 +12,7 @@ from datetime import datetime
 logging.basicConfig(filename=get_home_dir_path('.logit.log'),
                     level=logging.INFO)
 
-log = logging.getLogger('logit')
+logger = logging.getLogger('logit')
 
 LOGIT_FILENAME = 'logit.txt'
 LOGIT_BUCKET = 'logit-logs'
@@ -102,7 +104,7 @@ def _get_install_config(read_config):
                 f.write(config_str)
 
         except:
-            log.warn('failed to save config to %s', config_filename)
+            logger.warn('failed to save config to %s', config_filename)
             raise
 
     assert install_config
@@ -146,6 +148,7 @@ def _do_logit(opts):
 
     while category not in categories:
         print "Existing categories:"
+
         for key, schema in categories.iteritems():
             print "\t{}: {}".format(key, schema['description'])
 
@@ -174,9 +177,48 @@ def _do_logit(opts):
         print 'No logit entry entered.'
 
 
-def _do_list():
+def _longest_category(categories):
+    return max(len(category) for category in categories)
+
+
+def print_entry(entry, width=0):
+    timestamp = (
+        entry.get('timestamp', '')[:-10].replace('T', ' ')
+        or '-no timestamp-'
+    )
+    category = (
+        entry.get('category', 'note').rjust(_longest_category(categories))
+    )
+
+    prefix_len = len('{timestamp} : {category} : '.format(
+        timestamp=timestamp,
+        category=category,
+    ))
+    pretty_prefix = (
+        (bcolors.TIMESTAMP + '{timestamp}' + bcolors.ENDC +
+         ' : ' + bcolors.CATEGORY + '{category}' + bcolors.ENDC +
+         ' : ').format(timestamp=timestamp, category=category)
+    )
+    message = entry.get('message')
+    if prefix_len >= width:
+        print pretty_prefix + message
+    else:
+        lines = textwrap.wrap(message, width - prefix_len) or ['']
+        print pretty_prefix + lines[0]
+        for line in lines[1:]:
+            print ' ' * prefix_len + line
+
+
+def _do_list(category=None):
+    width, height = get_terminal_size()
     with open(get_home_dir_path(LOGIT_FILENAME), 'r') as f:
-        print f.read()
+        for line, entry in enumerate(f, start=1):
+            try:
+                entry = json.loads(entry)
+                if not category or entry.get('category') == category:
+                    print_entry(entry, width=width)
+            except:
+                logger.exception('error on line %d of logit log', line)
 
 
 def _do_check():
@@ -196,7 +238,7 @@ def main(argv=None):
     if opts.check:
         _do_check()
     elif opts.list:
-        _do_list()
+        _do_list(category=opts.category)
     elif not opts.backup:
         _do_logit(opts)
 
