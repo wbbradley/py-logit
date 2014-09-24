@@ -19,10 +19,11 @@ function logit() {
 }
 ```
 
-And, if you'd like to use the backup functionality, make sure you've got an S3 bucket called `logit-logs`. (TODO: make this a command-line parameter)
+And, if you'd like to use the backup functionality, make sure you've got an S3
+bucket specified.
 
 ```
 function logit-backup () {
-	logit --backup --aws-access-key-id=AKIAYOURACCESSKEY --aws-secret-access-key=alsfkjasdlfjasldkfjasdklfjasldkfjasdlk
+	logit --backup --s3-bucket my-bucket-of-logit-logs --aws-access-key-id=AKIAYOURACCESSKEY --aws-secret-access-key=alsfkjasdlfjasldkfjasdklfjasldkfjasdlk
 }
 ```

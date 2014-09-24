@@ -15,7 +15,6 @@ logging.basicConfig(filename=get_home_dir_path('.logit.log'),
 logger = logging.getLogger('logit')
 
 LOGIT_FILENAME = 'logit.txt'
-LOGIT_BUCKET = 'logit-logs'
 
 categories = load_yaml_resource('categories.yaml')
 
@@ -35,8 +34,13 @@ def get_arg_parser():
         dest='backup',
         action='store_true',
         default=False,
-        help=('Backup the logit.txt file to the {} bucket in S3'
-              .format(LOGIT_BUCKET)),
+        help='Backup the logit.txt file to an S3 bucket',
+        )
+    parser.add_argument(
+        '--s3-bucket',
+        dest='s3_bucket',
+        action='store',
+        help='When running backup, use this AWS access key id',
         )
     parser.add_argument(
         '--aws-access-key-id',
@@ -126,9 +130,11 @@ def _create_backup_key_name():
 
 def _do_backup(opts):
     """Perform a backup to S3."""
-    if not opts.aws_access_key_id or not opts.aws_secret_access_key:
-        print ('You must specify AWS access credentials with access '
-               'to a bucket called logit-logs')
+    if (not opts.aws_access_key_id
+            or not opts.aws_secret_access_key
+            or not opts.s3_bucket):
+        print ('You must specify AWS access credentials and an S3 bucket name '
+               '(see --help)')
 
     else:
         import boto
@@ -137,7 +143,7 @@ def _do_backup(opts):
         s3conn = boto.connect_s3(
             aws_access_key_id=opts.aws_access_key_id,
             aws_secret_access_key=opts.aws_secret_access_key)
-        bucket = s3conn.get_bucket(LOGIT_BUCKET)
+        bucket = s3conn.get_bucket(opts.s3_bucket)
         key = Key(bucket)
         key.key = _create_backup_key_name()
         key.set_contents_from_filename(get_home_dir_path(LOGIT_FILENAME))
