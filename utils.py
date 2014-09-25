@@ -54,11 +54,22 @@ def get_terminal_size():
     return int(cr[1]), int(cr[0])
 
 
+def unique_id_from_entry(entry):
+    if 'id' in entry:
+        return entry['id']
+
+    return (
+        '{}-{}'
+        .format(entry.get('timestamp'),
+                entry.get('category'))
+    )
+
+
 class bcolors:
     TIMESTAMP = '\033[94m'
     CATEGORY = '\033[93m'
     HEADER = '\033[95m'
-    OKBLUE = '\033[94m'
+    MENU = '\033[96m'
     OKGREEN = '\033[92m'
     WARNING = '\033[93m'
     FAIL = '\033[91m'

@@ -1,5 +1,8 @@
 note:
   description: 'Just a note'
+todo:
+  description: 'TODO'
+  track_completion: true
 url:
   description: 'An URL'
   fields:
@@ -8,8 +11,6 @@ health:
   description: 'A health issue'
 work:
   description: 'You did something for work'
-  fields:
-    minutes_spent: 'Minutes spent: '
 home:
   description: 'You did something for home'
 idea:

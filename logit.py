@@ -1,6 +1,6 @@
 import sys
 from utils import (get_home_dir_path, load_yaml_resource, get_terminal_size,
-                   bcolors)
+                   bcolors, unique_id_from_entry)
 import logging
 import textwrap
 import uuid
@@ -22,6 +22,13 @@ categories = load_yaml_resource('categories.yaml')
 def get_arg_parser():
     """Get the argument parser"""
     parser = argparse.ArgumentParser()
+    parser.add_argument(
+        '--todo',
+        dest='todo_list',
+        action='store_true',
+        default=False,
+        help='Launch interactive todo tracker',
+        )
     parser.add_argument(
         '--check',
         dest='check',
@@ -149,6 +156,22 @@ def _do_backup(opts):
         key.set_contents_from_filename(get_home_dir_path(LOGIT_FILENAME))
 
 
+def logit(entry):
+    entry['timestamp'] = datetime.utcnow().isoformat()
+    entry['id'] = str(uuid.uuid4())
+
+    assert 'category' in entry
+    assert 'timestamp' in entry
+    entry['message'] = entry.get('message') or raw_input('Notes: ')
+
+    if entry.get('message'):
+        with open(get_home_dir_path(LOGIT_FILENAME), 'a') as f:
+            f.write(json.dumps(entry))
+            f.write('\r\n')
+    else:
+        print 'No logit entry entered.'
+
+
 def _do_logit(opts):
     category = opts.category
 
@@ -162,10 +185,9 @@ def _do_logit(opts):
         if not category:
             return
 
-    entry = {
-        'category': category,
-        'timestamp': datetime.utcnow().isoformat(),
-    }
+    entry = {'category': category}
+    if opts.message:
+        entry['message'] = opts.message
 
     fields = categories[category].get('fields') or {}
     for field, description in fields.iteritems():
@@ -173,21 +195,14 @@ def _do_logit(opts):
         if value:
             entry[field] = value
 
-    entry['message'] = opts.message or raw_input('Notes: ')
-
-    if entry.get('message'):
-        with open(get_home_dir_path(LOGIT_FILENAME), 'a') as f:
-            f.write(json.dumps(entry))
-            f.write('\r\n')
-    else:
-        print 'No logit entry entered.'
+    logit(entry)
 
 
 def _longest_category(categories):
     return max(len(category) for category in categories)
 
 
-def print_entry(entry, width=0):
+def print_entry(entry, prefix='', width=0):
     timestamp = (
         entry.get('timestamp', '')[:-10].replace('T', ' ')
         or '-no timestamp-'
@@ -195,13 +210,14 @@ def print_entry(entry, width=0):
     category = (
         entry.get('category', 'note').rjust(_longest_category(categories))
     )
-
-    prefix_len = len('{timestamp} : {category} : '.format(
+    prefix_len = len('{prefix}{timestamp} : {category} : '.format(
+        prefix=prefix,
         timestamp=timestamp,
         category=category,
     ))
     pretty_prefix = (
-        (bcolors.TIMESTAMP + '{timestamp}' + bcolors.ENDC +
+        (bcolors.MENU + prefix + bcolors.ENDC +
+         bcolors.TIMESTAMP + '{timestamp}' + bcolors.ENDC +
          ' : ' + bcolors.CATEGORY + '{category}' + bcolors.ENDC +
          ' : ').format(timestamp=timestamp, category=category)
     )
@@ -215,16 +231,37 @@ def print_entry(entry, width=0):
             print ' ' * prefix_len + line
 
 
-def _do_list(category=None):
-    width, height = get_terminal_size()
+def _generate_entries_stream():
+    """Generate all the entries from the local logit file"""
     with open(get_home_dir_path(LOGIT_FILENAME), 'r') as f:
         for line, entry in enumerate(f, start=1):
             try:
-                entry = json.loads(entry)
-                if not category or entry.get('category') == category:
-                    print_entry(entry, width=width)
-            except:
+                yield json.loads(entry)
+            except ValueError:
                 logger.exception('error on line %d of logit log', line)
+
+
+def _generate_incomplete_entries(category=None):
+    incomplete_items = {}
+    for entry in _generate_entries_stream():
+        entry_category = entry.get('category')
+        if category is None or category == entry_category:
+            if categories.get(entry_category, {}).get('track_completion'):
+                if 'ref_id' in entry:
+                    ref_id = entry.get('ref_id')
+                    if entry.get('complete'):
+                        del incomplete_items[ref_id]
+                else:
+                    incomplete_items[unique_id_from_entry(entry)] = entry
+
+    return incomplete_items.itervalues()
+
+
+def _do_list(category=None):
+    width, _ = get_terminal_size()
+    for entry in _generate_entries_stream():
+        if not category or entry.get('category') == category:
+            print_entry(entry, width=width)
 
 
 def _do_check():
@@ -233,6 +270,32 @@ def _do_check():
             json.loads(line)
 
     print "Looks good."
+
+
+def _do_todo_list(opts):
+    """Show a menu for completing todo items"""
+    width, _ = get_terminal_size()
+    menu_items = list(enumerate(
+        _generate_incomplete_entries(category=opts.category),
+        start=1))
+
+    for index, entry in menu_items:
+        print_entry(entry, width=width, prefix=str(index) + ') ')
+
+    try:
+        completed_index = int(raw_input("Which entry did you complete "
+                                        "[Enter to quit]? "))
+    except ValueError:
+        print "No entries changed."
+        return
+
+    entry = dict(menu_items).get(completed_index)
+
+    logit({
+        'category': entry['category'],
+        'ref_id': unique_id_from_entry(entry),
+        'complete': True
+    })
 
 
 def main(argv=None):
@@ -245,11 +308,12 @@ def main(argv=None):
         _do_check()
     elif opts.list:
         _do_list(category=opts.category)
-    elif not opts.backup:
-        _do_logit(opts)
-
-    if opts.backup:
+    elif opts.todo_list:
+        _do_todo_list(opts)
+    elif opts.backup:
         _do_backup(opts)
+    else:
+        _do_logit(opts)
 
 
 if __name__ == '__main__':
