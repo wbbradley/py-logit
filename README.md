@@ -5,7 +5,7 @@ A tool for logging stuff that you care about.
 ```
 mkdir -p ~/src
 cd ~/src
-git clone git@github.com:wbbradley/logit.git
+git clone https://github.com/wbbradley/logit.git
 cd logit
 virtualenv env
 . env/bin/activate
