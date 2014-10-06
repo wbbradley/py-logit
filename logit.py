@@ -1,13 +1,13 @@
 import sys
-from utils import (get_home_dir_path, load_yaml_resource, get_terminal_size,
-                   bcolors, unique_id_from_entry)
+from datetime import datetime, timedelta
 import logging
 import textwrap
 import uuid
 import argparse
 import json
-from datetime import datetime
 
+from utils import (get_home_dir_path, load_yaml_resource, get_terminal_size,
+                   bcolors, unique_id_from_entry)
 
 logging.basicConfig(filename=get_home_dir_path('.logit.log'),
                     level=logging.INFO)
@@ -174,6 +174,13 @@ def logit(entry):
 
 def _do_logit(opts):
     category = opts.category
+    width, _ = get_terminal_size()
+
+    for entry in _generate_entries_stream():
+        week_ago = (datetime.utcnow() - timedelta(weeks=1)).isoformat()
+        if entry['timestamp'] > week_ago:
+            if not category or entry.get('category') == category:
+                print_entry(entry, width=width)
 
     while category not in categories:
         print "Existing categories:"
