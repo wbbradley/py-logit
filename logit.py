@@ -1,10 +1,15 @@
 import sys
+from StringIO import StringIO
 from datetime import datetime, timedelta
 import logging
 import textwrap
 import uuid
 import argparse
 import json
+
+import boto
+from boto.s3.key import Key
+
 
 from utils import (get_home_dir_path, load_yaml_resource, get_terminal_size,
                    bcolors, unique_id_from_entry)
@@ -87,6 +92,13 @@ def get_arg_parser():
         default=False,
         help='Print the current logit log',
         )
+    parser.add_argument(
+        '-M',
+        dest='merge',
+        action='store_true',
+        default=False,
+        help='Merge all S3 logs into this log.',
+        )
     return parser
 
 
@@ -142,6 +154,13 @@ def _create_backup_key_name():
     )
 
 
+def get_s3_bucket(opts):
+    s3conn = boto.connect_s3(
+        aws_access_key_id=opts.aws_access_key_id,
+        aws_secret_access_key=opts.aws_secret_access_key)
+    return s3conn.get_bucket(opts.s3_bucket)
+
+
 def _do_backup(opts):
     """Perform a backup to S3."""
     if (not opts.aws_access_key_id
@@ -151,13 +170,7 @@ def _do_backup(opts):
                '(see --help)')
 
     else:
-        import boto
-        from boto.s3.key import Key
-
-        s3conn = boto.connect_s3(
-            aws_access_key_id=opts.aws_access_key_id,
-            aws_secret_access_key=opts.aws_secret_access_key)
-        bucket = s3conn.get_bucket(opts.s3_bucket)
+        bucket = get_s3_bucket(opts)
         key = Key(bucket)
         key.key = _create_backup_key_name()
         key.set_contents_from_filename(get_home_dir_path(LOGIT_FILENAME))
@@ -166,6 +179,7 @@ def _do_backup(opts):
 def logit(entry, timestamp):
     entry['timestamp'] = timestamp.isoformat()
     entry['id'] = str(uuid.uuid4())
+    entry['installation'] = get_install_id()
 
     assert 'category' in entry
     entry['message'] = entry.get('message') or raw_input('Notes: ')
@@ -187,7 +201,7 @@ def _do_logit(opts):
     category = opts.category
     width, _ = get_terminal_size()
 
-    for entry in _generate_entries_stream():
+    for entry in _generate_entries_from_local_file(sort=True):
         week_ago = (datetime.utcnow() - timedelta(weeks=1)).isoformat()
         if entry['timestamp'] > week_ago:
             if not category or entry.get('category') == category:
@@ -261,14 +275,32 @@ def print_entry(entry, prefix='', width=0):
             print ' ' * prefix_len + line
 
 
-def _generate_entries_stream():
+def _generate_entries_from_file(file_, filename):
     """Generate all the entries from the local logit file"""
-    with open(get_home_dir_path(LOGIT_FILENAME), 'r') as f:
-        for line, entry in enumerate(f, start=1):
-            try:
-                yield json.loads(entry)
-            except ValueError:
-                logger.exception('error on line %d of logit log', line)
+    for line, entry in enumerate(file_, start=1):
+        try:
+            yield json.loads(entry)
+        except ValueError:
+            logger.exception('error on line %d of %s', line, filename)
+
+
+def _generate_entries_from_local_file(sort=False):
+    """Generate all the entries from the local logit file"""
+    filename = get_home_dir_path(LOGIT_FILENAME)
+
+    with open(filename, 'r') as file_:
+        if sort:
+            for entry in _generate_sorted_entries_from_file(file_, filename):
+                yield entry
+        else:
+            for entry in _generate_entries_from_file(file_, filename):
+                yield entry
+
+
+def _generate_entries_from_key(key):
+    file_ = StringIO(key.get_contents_as_string())
+    for entry in _generate_entries_from_file(file_, key.key):
+        yield entry
 
 
 def _compare_entries_by_timestamp(x, y):
@@ -278,9 +310,16 @@ def _compare_entries_by_timestamp(x, y):
         return 1
 
 
-def _generate_sorted_entries_stream():
+def _generate_sorted_entries_from_entries(entries):
     """Return all entries, sorted by time."""
-    entries = sorted(list(_generate_entries_stream()),
+    entries = sorted(entries, _compare_entries_by_timestamp)
+    for entry in entries:
+        yield entry
+
+
+def _generate_sorted_entries_from_file(file_, filename):
+    """Return all entries, sorted by time."""
+    entries = sorted(list(_generate_entries_from_file(file_, filename)),
                      _compare_entries_by_timestamp)
     for entry in entries:
         yield entry
@@ -288,7 +327,7 @@ def _generate_sorted_entries_stream():
 
 def _generate_incomplete_entries(category=None):
     incomplete_items = {}
-    for entry in _generate_entries_stream():
+    for entry in _generate_entries_from_local_file():
         entry_category = entry.get('category')
         if category is None or category == entry_category:
             if categories.get(entry_category, {}).get('track_completion'):
@@ -304,7 +343,7 @@ def _generate_incomplete_entries(category=None):
 
 def _do_list(category=None):
     width, _ = get_terminal_size()
-    for entry in _generate_sorted_entries_stream():
+    for entry in _generate_entries_from_local_file(sort=True):
         if not category or entry.get('category') == category:
             print_entry(entry, width=width)
 
@@ -343,6 +382,76 @@ def _do_todo_list(opts):
     })
 
 
+def _get_installation_from_key_name(key_name):
+    installation = key_name[27:63]
+    if len(installation) == 36:
+        return installation
+
+
+def _get_installations_from_keys(keys):
+    installations = set()
+
+    for key in keys:
+        installation = _get_installation_from_key_name(key.key)
+        if installation:
+            installations.add(installation)
+
+    return installations
+
+
+def _get_latest_key(keys, installation):
+    """Get the latest key for an installation."""
+    latest_key = None
+
+    for key in keys:
+        if installation in key.key:
+            is_latest = (
+                latest_key is None
+                or latest_key.key < key.key
+            )
+
+            if is_latest:
+                latest_key = key
+
+    return latest_key
+
+
+def _do_merge(opts):
+    """Merge all of the installations' logs into this installation."""
+    width, _ = get_terminal_size()
+    bucket = get_s3_bucket(opts)
+    keys = bucket.get_all_keys()
+
+    # first find all of the installations
+    installations = _get_installations_from_keys(keys)
+    install_id = get_install_id()
+    if install_id in installations:
+        installations.remove(install_id)
+
+    # for each installation, find the latest key
+    keys_to_merge = {
+        installation: _get_latest_key(keys, installation)
+        for installation in installations
+    }
+    entries = {}
+    for installation, key in keys_to_merge.iteritems():
+        for entry in _generate_entries_from_key(key):
+            if 'installation' not in entry:
+                entry['installation'] = installation
+            entry_id = unique_id_from_entry(entry)
+            entries[entry_id] = entry
+
+    # now add any local entries
+    for entry in _generate_entries_from_local_file():
+            if 'installation' not in entry:
+                entry['installation'] = install_id
+            entry_id = unique_id_from_entry(entry)
+            entries[entry_id] = entry
+
+    for entry in _generate_sorted_entries_from_entries(entries.values()):
+        print json.dumps(entry)
+
+
 def main(argv=None):
     if argv is None:
         argv = sys.argv[1:]
@@ -351,6 +460,8 @@ def main(argv=None):
 
     if opts.check:
         _do_check()
+    elif opts.merge:
+        _do_merge(opts)
     elif opts.list:
         _do_list(category=opts.category)
     elif opts.todo_list:
