@@ -37,6 +37,13 @@ def get_arg_parser():
         help='Test the integrity of the logit.txt file',
         )
     parser.add_argument(
+        '--back-date',
+        dest='back_date',
+        action='store',
+        default=None,
+        help='Backdate a log entry. --backdate 2014-10-03',
+        )
+    parser.add_argument(
         '--backup',
         dest='backup',
         action='store_true',
@@ -156,12 +163,11 @@ def _do_backup(opts):
         key.set_contents_from_filename(get_home_dir_path(LOGIT_FILENAME))
 
 
-def logit(entry):
-    entry['timestamp'] = datetime.utcnow().isoformat()
+def logit(entry, timestamp):
+    entry['timestamp'] = timestamp.isoformat()
     entry['id'] = str(uuid.uuid4())
 
     assert 'category' in entry
-    assert 'timestamp' in entry
     entry['message'] = entry.get('message') or raw_input('Notes: ')
 
     if entry.get('message'):
@@ -170,6 +176,11 @@ def logit(entry):
             f.write('\r\n')
     else:
         print 'No logit entry entered.'
+
+
+def parse_datetime(date_string):
+    """Convert 2014-10-2 to a datetime, etc..."""
+    return datetime(*[int(n) for n in date_string.split('-')])
 
 
 def _do_logit(opts):
@@ -202,7 +213,12 @@ def _do_logit(opts):
         if value:
             entry[field] = value
 
-    logit(entry)
+    timestamp = datetime.utcnow()
+    if opts.back_date:
+        timestamp = parse_datetime(opts.back_date)
+
+    print
+    logit(entry, timestamp)
 
 
 def _longest_category(categories):
@@ -210,10 +226,17 @@ def _longest_category(categories):
 
 
 def print_entry(entry, prefix='', width=0):
-    timestamp = (
-        entry.get('timestamp', '')[:-10].replace('T', ' ')
-        or '-no timestamp-'
-    )
+    timestamp = entry.get('timestamp', '')
+    if len(timestamp) == 19:
+        timestamp = timestamp[:-3].replace('T', ' ')
+    elif len(timestamp) == 26:
+        timestamp = timestamp[:-10].replace('T', ' ')
+    else:
+        timestamp = None
+
+    if not timestamp:
+        timestamp = '-no timestamp-'
+
     category = (
         entry.get('category', 'note').rjust(_longest_category(categories))
     )
@@ -248,6 +271,21 @@ def _generate_entries_stream():
                 logger.exception('error on line %d of logit log', line)
 
 
+def _compare_entries_by_timestamp(x, y):
+    if x.get('timestamp', '') < y.get('timestamp', ''):
+        return -1
+    else:
+        return 1
+
+
+def _generate_sorted_entries_stream():
+    """Return all entries, sorted by time."""
+    entries = sorted(list(_generate_entries_stream()),
+                     _compare_entries_by_timestamp)
+    for entry in entries:
+        yield entry
+
+
 def _generate_incomplete_entries(category=None):
     incomplete_items = {}
     for entry in _generate_entries_stream():
@@ -266,7 +304,7 @@ def _generate_incomplete_entries(category=None):
 
 def _do_list(category=None):
     width, _ = get_terminal_size()
-    for entry in _generate_entries_stream():
+    for entry in _generate_sorted_entries_stream():
         if not category or entry.get('category') == category:
             print_entry(entry, width=width)
 
