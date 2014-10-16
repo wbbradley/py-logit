@@ -197,15 +197,18 @@ def parse_datetime(date_string):
     return datetime(*[int(n) for n in date_string.split('-')])
 
 
+def print_recent_week(opts):
+    """Show a list of all entries from the recent week."""
+    width, _ = get_terminal_size()
+    week_ago = (datetime.utcnow() - timedelta(weeks=1)).isoformat()
+    for entry in _generate_merged_entries_from_s3(opts):
+        if entry['timestamp'] > week_ago:
+            if not opts.category or entry.get('category') == opts.category:
+                print_entry(entry, width=width)
+
+
 def _do_logit(opts):
     category = opts.category
-    width, _ = get_terminal_size()
-
-    for entry in _generate_entries_from_local_file(sort=True):
-        week_ago = (datetime.utcnow() - timedelta(weeks=1)).isoformat()
-        if entry['timestamp'] > week_ago:
-            if not category or entry.get('category') == category:
-                print_entry(entry, width=width)
 
     while category not in categories:
         print "Existing categories:"
@@ -216,6 +219,10 @@ def _do_logit(opts):
         category = raw_input('Category: ')
         if not category:
             return
+
+    opts.category = category
+
+    print_recent_week(opts)
 
     entry = {'category': category}
     if opts.message:
@@ -416,9 +423,8 @@ def _get_latest_key(keys, installation):
     return latest_key
 
 
-def _do_merge(opts):
+def _generate_merged_entries_from_s3(opts):
     """Merge all of the installations' logs into this installation."""
-    width, _ = get_terminal_size()
     bucket = get_s3_bucket(opts)
     keys = bucket.get_all_keys()
 
@@ -449,7 +455,14 @@ def _do_merge(opts):
             entries[entry_id] = entry
 
     for entry in _generate_sorted_entries_from_entries(entries.values()):
-        print json.dumps(entry)
+        yield entry
+
+
+def _do_merge(opts):
+    """Show the contents when merged from all installations."""
+    width, _ = get_terminal_size()
+    for entry in _generate_merged_entries_from_s3(opts):
+        print_entry(entry, width=width)
 
 
 def main(argv=None):
