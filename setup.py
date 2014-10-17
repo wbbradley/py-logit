@@ -4,5 +4,5 @@ setup(name='logit',
       description='A log for humans',
       author='William Bradley',
       author_email='williambbradley@gmail.com',
-      packages=['logit', 'utils'],
+      py_modules=['logit', 'utils'],
       )
