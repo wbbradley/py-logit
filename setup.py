@@ -5,4 +5,5 @@ setup(name='logit',
       author='William Bradley',
       author_email='williambbradley@gmail.com',
       py_modules=['logit', 'utils'],
+      install_requires=['boto', 'PyYAML'],
       )
