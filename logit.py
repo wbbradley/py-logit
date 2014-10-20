@@ -10,18 +10,22 @@ import json
 import boto
 from boto.s3.key import Key
 
-
 from utils import (get_home_dir_path, load_yaml_resource, get_terminal_size,
                    bcolors, unique_id_from_entry)
 
-logging.basicConfig(filename=get_home_dir_path('.logit.log'),
-                    level=logging.INFO)
-
-logger = logging.getLogger('logit')
-
 LOGIT_FILENAME = 'logit.txt'
 
-categories = load_yaml_resource('categories.yaml')
+
+if __name__ == '__main__':
+    logging.basicConfig(filename=get_home_dir_path('.logit.log'),
+                        level=logging.INFO)
+
+
+def get_categories():
+    return load_yaml_resource('categories.yaml')
+
+
+logger = logging.getLogger('logit')
 
 
 def get_arg_parser():
@@ -197,17 +201,18 @@ def parse_datetime(date_string):
     return datetime(*[int(n) for n in date_string.split('-')])
 
 
-def print_recent_week(opts):
+def print_recent_week(opts, categories):
     """Show a list of all entries from the recent week."""
     width, _ = get_terminal_size()
     week_ago = (datetime.utcnow() - timedelta(weeks=1)).isoformat()
     for entry in _generate_merged_entries_from_s3(opts):
         if entry['timestamp'] > week_ago:
             if not opts.category or entry.get('category') == opts.category:
-                print_entry(entry, width=width)
+                print_entry(entry, categories, width=width)
 
 
 def _do_logit(opts):
+    categories = get_categories()
     category = opts.category
 
     while category not in categories:
@@ -222,7 +227,7 @@ def _do_logit(opts):
 
     opts.category = category
 
-    print_recent_week(opts)
+    print_recent_week(opts, categories)
 
     entry = {'category': category}
     if opts.message:
@@ -246,7 +251,7 @@ def _longest_category(categories):
     return max(len(category) for category in categories)
 
 
-def print_entry(entry, prefix='', width=0):
+def print_entry(entry, categories, prefix='', width=0):
     timestamp = entry.get('timestamp', '')
     if len(timestamp) == 19:
         timestamp = timestamp[:-3].replace('T', ' ')
@@ -332,7 +337,7 @@ def _generate_sorted_entries_from_file(file_, filename):
         yield entry
 
 
-def _generate_incomplete_entries(category=None):
+def _generate_incomplete_entries(categories, category=None):
     incomplete_items = {}
     for entry in _generate_entries_from_local_file():
         entry_category = entry.get('category')
@@ -348,11 +353,11 @@ def _generate_incomplete_entries(category=None):
     return incomplete_items.itervalues()
 
 
-def _do_list(category=None):
+def _do_list(categories, category=None):
     width, _ = get_terminal_size()
     for entry in _generate_entries_from_local_file(sort=True):
         if not category or entry.get('category') == category:
-            print_entry(entry, width=width)
+            print_entry(entry, categories, width=width)
 
 
 def _do_check():
@@ -363,15 +368,15 @@ def _do_check():
     print "Looks good."
 
 
-def _do_todo_list(opts):
+def _do_todo_list(categories, opts):
     """Show a menu for completing todo items"""
     width, _ = get_terminal_size()
     menu_items = list(enumerate(
-        _generate_incomplete_entries(category=opts.category),
+        _generate_incomplete_entries(categories, category=opts.category),
         start=1))
 
     for index, entry in menu_items:
-        print_entry(entry, width=width, prefix=str(index) + ') ')
+        print_entry(entry, categories, width=width, prefix=str(index) + ') ')
 
     try:
         completed_index = int(raw_input("Which entry did you complete "
@@ -449,20 +454,20 @@ def _generate_merged_entries_from_s3(opts):
 
     # now add any local entries
     for entry in _generate_entries_from_local_file():
-            if 'installation' not in entry:
-                entry['installation'] = install_id
-            entry_id = unique_id_from_entry(entry)
-            entries[entry_id] = entry
+        if 'installation' not in entry:
+            entry['installation'] = install_id
+        entry_id = unique_id_from_entry(entry)
+        entries[entry_id] = entry
 
     for entry in _generate_sorted_entries_from_entries(entries.values()):
         yield entry
 
 
-def _do_merge(opts):
+def _do_merge(categories, opts):
     """Show the contents when merged from all installations."""
     width, _ = get_terminal_size()
     for entry in _generate_merged_entries_from_s3(opts):
-        print_entry(entry, width=width)
+        print_entry(entry, categories, width=width)
 
 
 def main(argv=None):
@@ -470,15 +475,15 @@ def main(argv=None):
         argv = sys.argv[1:]
 
     opts = parse_args(argv)
-
+    categories = get_categories()
     if opts.check:
         _do_check()
     elif opts.merge:
-        _do_merge(opts)
+        _do_merge(categories, opts)
     elif opts.list:
-        _do_list(category=opts.category)
+        _do_list(categories, category=opts.category)
     elif opts.todo_list:
-        _do_todo_list(opts)
+        _do_todo_list(categories, opts)
     elif opts.backup:
         _do_backup(opts)
     else:
