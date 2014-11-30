@@ -57,6 +57,12 @@ def get_categories():
     }
 
 
+def get_version():
+    """Get version."""
+    import pkg_resources
+    return pkg_resources.require("logit")[0]
+
+
 def get_arg_parser():
     """Get the argument parser"""
     parser = argparse.ArgumentParser()
@@ -139,6 +145,13 @@ def get_arg_parser():
         default=False,
         help='Merge all S3 logs into this log.',
         )
+    parser.add_argument(
+        '--version',
+        dest='version',
+        action='store_true',
+        default=False,
+        help='Print the current logit version ({})'.format(get_version()),
+    )
     return parser
 
 
@@ -515,6 +528,8 @@ def main(argv=None):
     categories = get_categories()
     if opts.check:
         _do_check()
+    elif opts.version:
+        print get_version()
     elif opts.merge:
         _do_merge(categories, opts)
     elif opts.list:
