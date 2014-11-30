@@ -1,9 +1,16 @@
-from distutils.core import setup
-setup(name='logit',
-      version='0.1',
-      description='A log for humans',
-      author='William Bradley',
-      author_email='williambbradley@gmail.com',
-      py_modules=['logit', 'utils'],
-      install_requires=['boto', 'PyYAML'],
-      )
+#!/usr/bin/env python
+
+from setuptools import setup
+
+setup(
+    name='logit',
+    version='0.2',
+    description='A private log for humans',
+    author='Will Bradley',
+    author_email='williambbradley@gmail.com',
+    url='https://github.com/wbbradley/logit',
+    packages=['logit'],
+    entry_points={'console_scripts': [
+        'logit = logit.logit:main',
+    ]},
+)

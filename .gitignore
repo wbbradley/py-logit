@@ -2,3 +2,6 @@ tags
 *.swp
 *.pyc
 env/
+build/
+*.egg-info
+*.egg

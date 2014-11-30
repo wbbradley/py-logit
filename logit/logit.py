@@ -10,8 +10,8 @@ import json
 import boto
 from boto.s3.key import Key
 
-from utils import (get_home_dir_path, load_yaml_resource, get_terminal_size,
-                   bcolors, unique_id_from_entry)
+from utils import (get_home_dir_path, get_terminal_size, bcolors,
+                   unique_id_from_entry)
 
 LOGIT_FILENAME = 'logit.txt'
 
@@ -20,12 +20,41 @@ if __name__ == '__main__':
     logging.basicConfig(filename=get_home_dir_path('.logit.log'),
                         level=logging.INFO)
 
+logger = logging.getLogger('logit')
+
 
 def get_categories():
-    return load_yaml_resource('categories.yaml')
-
-
-logger = logging.getLogger('logit')
+    """Get categories."""
+    return {
+        'note': {
+            'description': 'Just a note',
+        },
+        'todo': {
+            'description': 'TODO',
+            'track_completion': True,
+        },
+        'url': {
+            'description': 'An URL',
+            'fields': {
+                'url': 'URL: ',
+            },
+        },
+        'health': {
+            'description': 'A health issue',
+        },
+        'work': {
+            'description': 'You did something for work',
+        },
+        'home': {
+            'description': 'You did something for home',
+        },
+        'idea': {
+            'description': 'An idea',
+        },
+        'dream': {
+            'description': 'A dream you remember',
+        },
+    }
 
 
 def get_arg_parser():
@@ -51,6 +80,13 @@ def get_arg_parser():
         action='store',
         default=None,
         help='Backdate a log entry. --backdate 2014-10-03',
+        )
+    parser.add_argument(
+        '--show_recent_week',
+        dest='show_recent_week',
+        action='store_true',
+        default=False,
+        help='Connect to S3 and show the most recent week of log info.',
         )
     parser.add_argument(
         '--backup',
@@ -227,7 +263,8 @@ def _do_logit(opts):
 
     opts.category = category
 
-    print_recent_week(opts, categories)
+    if opts.show_recent_week:
+        print_recent_week(opts)
 
     entry = {'category': category}
     if opts.message:

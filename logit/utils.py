@@ -1,4 +1,5 @@
 import yaml
+import os
 from os.path import join, abspath, expanduser, dirname
 
 
@@ -9,8 +10,7 @@ def get_home_dir_path(filename):
 
 def get_resource_path(filename):
     """Resolve a filename in the resources"""
-    return abspath(join(dirname(__file__),
-                        'res', filename))
+    return abspath(join(dirname(__file__), filename))
 
 
 def load_yaml_resource(filename):
@@ -20,7 +20,6 @@ def load_yaml_resource(filename):
 
 
 def get_terminal_size():
-    import os
     env = os.environ
 
     def ioctl_GWINSZ(fd):
