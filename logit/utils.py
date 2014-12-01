@@ -1,5 +1,6 @@
-import yaml
+import errno
 import os
+import yaml
 from os.path import join, abspath, expanduser, dirname
 
 
@@ -62,6 +63,15 @@ def unique_id_from_entry(entry):
         .format(entry.get('timestamp'),
                 entry.get('category'))
     )
+
+
+def make_sure_path_exists(path):
+    """Make sure path exists."""
+    try:
+        os.makedirs(path)
+    except OSError as exception:
+        if exception.errno != errno.EEXIST:
+            raise
 
 
 class bcolors:

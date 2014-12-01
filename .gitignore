@@ -3,5 +3,6 @@ tags
 *.pyc
 env/
 build/
+dist/
 *.egg-info
 *.egg

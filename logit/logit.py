@@ -6,12 +6,13 @@ import textwrap
 import uuid
 import argparse
 import json
+from os.path import dirname
 
 import boto
 from boto.s3.key import Key
 
 from utils import (get_home_dir_path, get_terminal_size, bcolors,
-                   unique_id_from_entry)
+                   unique_id_from_entry, make_sure_path_exists)
 
 LOGIT_FILENAME = 'logit.txt'
 
@@ -180,15 +181,10 @@ def _get_install_config(read_config):
             'config_time': datetime.utcnow().isoformat(),
         }
 
-        try:
-            with open(config_filename, 'w') as f:
-                config_str = json.dumps(install_config, sort_keys=True,
-                                        indent=4)
-                f.write(config_str)
+        make_sure_path_exists(dirname(config_filename))
 
-        except:
-            logger.warn('failed to save config to %s', config_filename)
-            raise
+        with open(config_filename, 'w') as f:
+            json.dump(install_config, f, sort_keys=True, indent=4)
 
     assert install_config
     return install_config
