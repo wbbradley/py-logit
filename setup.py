@@ -13,6 +13,6 @@ setup(
     packages=['logit'],
     install_requires=['boto', 'PyYAML'],
     entry_points={'console_scripts': [
-        'logit = logit.logit:main',
+        'logit = logit.main:main',
     ]},
 )

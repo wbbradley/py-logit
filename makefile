@@ -13,6 +13,10 @@ test: clean
 	. env/bin/activate && py.test $(PYTEST_ARGS) --ignore=env
 
 clean:
+	@echo Deleting build dir...
+	@rm -rf build
+	@echo Deleting installed logit package dir...
+	@rm -rf env/lib/python2.7/site-packages/logit_safe*
 	@echo Deleting pyc files...
 	@find . -name '*.py[co]' -exec rm -f '{}' ';' 2> /dev/null
 
