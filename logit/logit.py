@@ -60,7 +60,7 @@ def get_categories():
 def get_version():
     """Get version."""
     import pkg_resources
-    return pkg_resources.require("logit")[0]
+    return pkg_resources.require('logit-safe')[0]
 
 
 def get_arg_parser():
