@@ -3,8 +3,8 @@
 from setuptools import setup
 
 setup(
-    name='logit-safe',
-    version='0.7.1',
+    name='logit',
+    version='0.7.2',
     description='A private log for humans',
     author='Will Bradley',
     author_email='williambbradley@gmail.com',
