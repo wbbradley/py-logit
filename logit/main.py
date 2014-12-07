@@ -9,6 +9,7 @@ import argparse
 import json
 from os.path import dirname
 
+from attrdict import AttrDict
 import boto
 from boto.s3.key import Key
 
@@ -162,6 +163,14 @@ def get_arg_parser():
         default=False,
         help='Print the current logit version ({})'.format(get_version()),
     )
+    parser.add_argument(
+        '--encrypt-all',
+        dest='encrypt_all',
+        action='store_true',
+        default=False,
+        help=('Go back through prior locally stored logit entries, and '
+              'encrypt them.'),
+    )
     return parser
 
 
@@ -213,10 +222,32 @@ def _create_backup_key_name():
 
 
 def get_s3_bucket(opts):
+    """Get s3 bucket."""
     s3conn = boto.connect_s3(
         aws_access_key_id=opts.aws_access_key_id,
         aws_secret_access_key=opts.aws_secret_access_key)
     return s3conn.get_bucket(opts.s3_bucket)
+
+
+def _do_encrpyt_all(opts):
+    """Do encrpyt all."""
+    get_secret_key(opts)
+    new_secret_key = get_secret_key(AttrDict(),
+                                    prompt='Enter a new password: ')
+    new_secret_key_2 = get_secret_key(AttrDict(),
+                                      prompt='Repeat your new password: ')
+    if new_secret_key != new_secret_key_2:
+        print "Passwords did not match."
+        return
+
+    out = StringIO()
+    for entry in _generate_entries_from_local_file(opts):
+        encrypt_json(new_secret_key, entry, out)
+        out.write('\r\n')
+    out.seek(0)
+
+    with open(opts.logit_filename, 'w') as f:
+        f.write(out.read())
 
 
 def _do_backup(opts):
@@ -541,6 +572,8 @@ def _main(argv):
     categories = get_categories()
     if opts.check:
         _do_check(opts)
+    elif opts.encrypt_all:
+        _do_encrpyt_all(opts)
     elif opts.version:
         print get_version()
     elif opts.merge:

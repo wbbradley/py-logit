@@ -15,18 +15,20 @@ def _salted(password):
     return password + LOGIT_SALT
 
 
-def _get_password():
+def _get_password(prompt=None):
     """Get password."""
-    return getpass.getpass(
-        'Enter your logit password (do not use this password anywhere '
-        'else): ')
+    if not prompt:
+        prompt = ('Enter your logit password (do not use this password '
+                  'anywhere else): ')
+
+    return getpass.getpass(prompt)
 
 
-def get_secret_key(opts, password=None):
+def get_secret_key(opts, password=None, prompt=None):
     """Get secret key."""
     if not hasattr(opts, 'secret_key'):
         if not password:
-            password = _get_password()
+            password = _get_password(prompt=prompt)
 
         hash_ = SHA256.new()
         hash_.update(_salted(password))
