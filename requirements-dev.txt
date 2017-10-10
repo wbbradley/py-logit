@@ -1,6 +1,6 @@
-flake8==2.2.3
-pyflakes==0.8.1
-ipython==2.2.0
-ipdb==0.8
-pytest==2.6.4
-mock==1.0.1
+flake8
+pyflakes
+ipython
+ipdb
+pytest
+mock

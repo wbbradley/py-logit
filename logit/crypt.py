@@ -31,7 +31,8 @@ def get_secret_key(opts, password=None, prompt=None):
             password = _get_password(prompt=prompt)
 
         hash_ = SHA256.new()
-        hash_.update(_salted(password))
+        salted_password = _salted(password)
+        hash_.update(salted_password.encode('utf8'))
         opts.secret_key = hash_.digest()
 
     return opts.secret_key
@@ -52,7 +53,7 @@ def encrypt_json(secret_key, blob, file_):
     cipher = AES.new(secret_key)
     encoded = encode_aes(cipher, json.dumps(blob))
 
-    file_.write(encoded)
+    file_.write(encoded.decode('utf8'))
 
 
 def decode_aes(cipher, encrypted):
@@ -60,6 +61,7 @@ def decode_aes(cipher, encrypted):
     return (
         cipher
         .decrypt(base64.b64decode(encrypted))
+        .decode('utf8')
         .rstrip(PADDING)
     )
 

@@ -1,6 +1,6 @@
 import sys
 import gc
-from StringIO import StringIO
+from io import StringIO
 from datetime import datetime, timedelta
 import logging
 import textwrap
@@ -8,6 +8,7 @@ import uuid
 import argparse
 import json
 from os.path import dirname
+from functools import cmp_to_key
 
 from attrdict import AttrDict
 import boto
@@ -25,7 +26,7 @@ if __name__ == '__main__':
     logging.basicConfig(filename=get_home_dir_path('.logit.log'),
                         level=logging.INFO)
 
-logger = logging.getLogger('logit')
+log = logging.getLogger('logit')
 
 
 def get_categories():
@@ -230,14 +231,14 @@ def get_s3_bucket(opts):
 
 
 def _do_encrpyt_all(opts):
-    """Do encrpyt all."""
+    """Do encrypt all."""
     get_secret_key(opts)
     new_secret_key = get_secret_key(AttrDict(),
                                     prompt='Enter a new password: ')
     new_secret_key_2 = get_secret_key(AttrDict(),
                                       prompt='Repeat your new password: ')
     if new_secret_key != new_secret_key_2:
-        print "Passwords did not match."
+        print("Passwords did not match.")
         return
 
     out = StringIO()
@@ -252,11 +253,11 @@ def _do_encrpyt_all(opts):
 
 def _do_backup(opts):
     """Perform a backup to S3."""
-    if (not opts.aws_access_key_id
-            or not opts.aws_secret_access_key
-            or not opts.s3_bucket):
-        print ('You must specify AWS access credentials and an S3 bucket name '
-               '(see --help)')
+    if (not opts.aws_access_key_id or
+            not opts.aws_secret_access_key or
+            not opts.s3_bucket):
+        print('You must specify AWS access credentials and an S3 bucket name '
+              '(see --help)')
 
     else:
         bucket = get_s3_bucket(opts)
@@ -280,7 +281,7 @@ def logit(opts, entry, timestamp):
                 encrypt_json(secret_key, entry, f)
                 f.write('\r\n')
         else:
-            print 'No logit entry entered.'
+            print('No logit entry entered.')
     finally:
         gc.collect()
 
@@ -305,10 +306,10 @@ def _do_logit(opts):
     category = opts.category
 
     while category not in categories:
-        print "Existing categories:"
+        print("Existing categories:")
 
-        for key, schema in categories.iteritems():
-            print "\t{}: {}".format(key, schema['description'])
+        for key, schema in categories.items():
+            print("\t{}: {}".format(key, schema['description']))
 
         category = get_console_input('Category: ')
         if not category:
@@ -324,7 +325,7 @@ def _do_logit(opts):
         entry['message'] = opts.message
 
     fields = categories[category].get('fields') or {}
-    for field, description in fields.iteritems():
+    for field, description in fields.items():
         value = get_console_input(description)
         if value:
             entry[field] = value
@@ -368,24 +369,27 @@ def print_entry(entry, categories, prefix='', width=0):
     )
     message = entry.get('message')
     if prefix_len >= width:
-        print pretty_prefix + message
+        print(pretty_prefix + message)
     else:
         lines = textwrap.wrap(message, width - prefix_len) or ['']
-        print pretty_prefix + lines[0]
+        print(pretty_prefix + lines[0])
         for line in lines[1:]:
-            print ' ' * prefix_len + line
+            print(' ' * prefix_len + line)
 
 
 def _generate_entries_from_file(opts, file_, filename):
     """Generate all the entries from the local logit file"""
     for line, entry in enumerate(file_, start=1):
         if entry[0] != '{':
-            yield decrypt_json(get_secret_key(opts), entry)
+            try:
+                yield decrypt_json(get_secret_key(opts), entry)
+            except:
+                log.exception('error decrypting entry %s' % entry)
         else:
             try:
                 yield json.loads(entry)
             except ValueError:
-                logger.exception('error on line %d of %s', line, filename)
+                log.exception('error on line %d of %s', line, filename)
 
 
 def _generate_entries_from_local_file(opts, sort=False):
@@ -417,16 +421,15 @@ def _compare_entries_by_timestamp(x, y):
 
 def _generate_sorted_entries_from_entries(entries):
     """Return all entries, sorted by time."""
-    entries = sorted(entries, _compare_entries_by_timestamp)
+    entries = sorted(entries, key=cmp_to_key(_compare_entries_by_timestamp))
     for entry in entries:
         yield entry
 
 
 def _generate_sorted_entries_from_file(opts, file_, filename):
     """Return all entries, sorted by time."""
-    entries = sorted(list(_generate_entries_from_file(opts, file_,
-                                                      filename)),
-                     _compare_entries_by_timestamp)
+    entries = sorted(list(_generate_entries_from_file(opts, file_, filename)),
+                     key=cmp_to_key(_compare_entries_by_timestamp))
     for entry in entries:
         yield entry
 
@@ -459,7 +462,7 @@ def _do_check(opts):
         for line in f:
             json.loads(line)
 
-    print "Looks good."
+    print("Looks good.")
 
 
 def _do_todo_list(opts, categories):
@@ -476,7 +479,7 @@ def _do_todo_list(opts, categories):
         completed_index = int(get_console_input(
             "Which entry did you complete [Enter to quit]? "))
     except ValueError:
-        print "No entries changed."
+        print("No entries changed.")
         return
 
     entry = dict(menu_items).get(completed_index)
@@ -512,8 +515,8 @@ def _get_latest_key(keys, installation):
     for key in keys:
         if installation in key.key:
             is_latest = (
-                latest_key is None
-                or latest_key.key < key.key
+                latest_key is None or
+                latest_key.key < key.key
             )
 
             if is_latest:
@@ -539,7 +542,7 @@ def _generate_merged_entries_from_s3(opts):
         for installation in installations
     }
     entries = {}
-    for installation, key in keys_to_merge.iteritems():
+    for installation, key in keys_to_merge.items():
         for entry in _generate_entries_from_key(opts, key):
             if 'installation' not in entry:
                 entry['installation'] = installation
@@ -575,7 +578,7 @@ def _main(argv):
     elif opts.encrypt_all:
         _do_encrpyt_all(opts)
     elif opts.version:
-        print get_version()
+        print(get_version())
     elif opts.merge:
         _do_merge(categories, opts)
     elif opts.list:
