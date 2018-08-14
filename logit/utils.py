@@ -1,6 +1,5 @@
 import errno
 import os
-import yaml
 from os.path import join, abspath, expanduser, dirname
 
 
@@ -12,12 +11,6 @@ def get_home_dir_path(filename):
 def get_resource_path(filename):
     """Resolve a filename in the resources"""
     return abspath(join(dirname(__file__), filename))
-
-
-def load_yaml_resource(filename):
-    """Load a yaml file from the resources"""
-    with open(get_resource_path(filename), 'r') as f:
-        return yaml.load(f)
 
 
 def get_terminal_size():
@@ -87,4 +80,4 @@ class bcolors:
 
 def get_console_input(prompt):
     """Get console input."""
-    return raw_input(prompt)
+    return input(prompt)

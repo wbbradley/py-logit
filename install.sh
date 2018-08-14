@@ -1,12 +1,9 @@
 #!/bin/sh
 set -e
 
-PYTHON=python
-
 # Make sure needed tools are available
 git --version > /dev/null
 $PYTHON --version > /dev/null
-virtualenv --version > /dev/null
 
 if [ ! -f install.sh ]; then
 	echo "Please run install.sh from the directory you cloned 'logit' into..."
@@ -15,7 +12,7 @@ fi
 
 export VIRTUAL_ENV=
 rm -rf env
-virtualenv env -p $PYTHON
+python -mvenv env
 source env/bin/activate
 pip install -r requirements.txt
 
