@@ -1,0 +1,25 @@
+export {log, Debug, Info, Warn, Error, Fatal}
+
+data EntryType {
+  Debug
+  Info
+  Warn
+  Error
+  Fatal
+}
+
+instance Str EntryType {
+  fn str(et) => match et {
+    Debug => "DEBUG"
+    Info => "INFO"
+    Warn => "WARN"
+    Error => "ERROR"
+    Fatal => "FATAL"
+  }
+}
+
+fn log(entry_type EntryType, msg) {
+  print("${entry_type}: ${msg}")
+}
+
+
