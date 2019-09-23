@@ -45,12 +45,14 @@ instance Str Category {
 data Command {
   GetNote(String)
   ListNotes
+  ShowVersion
 }
 
 instance Str Command {
   fn str(cmd) => match cmd {
     GetNote(key) => "GetNote(${key})"
     ListNotes    => "ListNotes"
+    ShowVersion  => "ShowVersion"
   }
 }
 
@@ -75,13 +77,13 @@ fn get_arg_parser()  {
   # Get the argument parser
   return choice([
     const("list", ListNotes),
+    const("version", ShowVersion),
     lift(compose(GetNote, str), choice([literal(key) for key in keys(get_categories())])),
   ])
 }
 
 
 /*
-
 fn _get_install_config(read_config):
     install_config = None
 
@@ -109,11 +111,15 @@ fn _get_install_config(read_config):
     assert install_config
     return install_config
 
+*/
+/*
 
 fn get_install_id(read_config=True):
     """Get this installation"s ID"""
     return _get_install_config(read_config)["uuid"]
 
+*/
+/*
 
 fn _create_backup_key_name():
     return (
@@ -122,6 +128,8 @@ fn _create_backup_key_name():
                 LOGIT_FILENAME)
     )
 
+*/
+/*
 
 fn get_s3_bucket(opts):
     """Get s3 bucket."""
@@ -130,6 +138,8 @@ fn get_s3_bucket(opts):
         aws_secret_access_key=opts.aws_secret_access_key)
     return s3conn.get_bucket(opts.s3_bucket)
 
+*/
+/*
 
 fn _do_encrpyt_all(opts):
     """Do encrypt all."""
@@ -151,6 +161,8 @@ fn _do_encrpyt_all(opts):
     with open(opts.logit_filename, "w") as f:
         f.write(out.read())
 
+*/
+/*
 
 fn _do_backup(opts):
     """Perform a backup to S3."""
@@ -166,6 +178,8 @@ fn _do_backup(opts):
         key.key = _create_backup_key_name()
         key.set_contents_from_filename(opts.logit_filename)
 
+*/
+/*
 
 fn logit(opts, entry, timestamp):
     try:
@@ -186,11 +200,15 @@ fn logit(opts, entry, timestamp):
     finally:
         gc.collect()
 
+*/
+/*
 
 fn parse_datetime(date_string):
     """Convert 2014-10-2 to a datetime, etc..."""
     return datetime(*[int(n) for n in date_string.split("-")])
 
+*/
+/*
 
 fn print_recent_week(opts, categories):
     """Show a list of all entries from the recent week."""
@@ -201,6 +219,8 @@ fn print_recent_week(opts, categories):
             if not opts.category or entry.get("category") == opts.category:
                 print_entry(entry, categories, width=width)
 
+*/
+/*
 
 fn _do_logit(opts):
     categories = get_categories()
@@ -237,11 +257,13 @@ fn _do_logit(opts):
 
     logit(opts, entry, timestamp)
 
+*/
+/*
 
 fn _longest_category(categories):
     return max(len(category) for category in categories)
 
-    */
+*/
 /*
 fn print_entry(entry, categories, prefix="", width=0):
     timestamp = entry.get("timestamp", "")
@@ -278,6 +300,8 @@ fn print_entry(entry, categories, prefix="", width=0):
         for line in lines[1:]:
             print(" " * prefix_len + line)
 
+*/
+/*
 
 fn _generate_entries_from_file(opts, file_, filename):
     """Generate all the entries from the local logit file"""
@@ -293,6 +317,8 @@ fn _generate_entries_from_file(opts, file_, filename):
             except ValueError:
                 log.exception("error on line %d of %s", line, filename)
 
+*/
+/*
 
 fn _generate_entries_from_local_file(opts, sort=False):
     """Generate all the entries from the local logit file"""
@@ -307,12 +333,16 @@ fn _generate_entries_from_local_file(opts, sort=False):
             for entry in _generate_entries_from_file(opts, file_, filename):
                 yield entry
 
+*/
+/*
 
 fn _generate_entries_from_key(opts, key):
     file_ = StringIO(key.get_contents_as_string())
     for entry in _generate_entries_from_file(opts, file_, key.key):
         yield entry
 
+*/
+/*
 
 fn _compare_entries_by_timestamp(x, y):
     if x.get("timestamp", "") < y.get("timestamp", ""):
@@ -320,6 +350,8 @@ fn _compare_entries_by_timestamp(x, y):
     else:
         return 1
 
+*/
+/*
 
 fn _generate_sorted_entries_from_entries(entries):
     """Return all entries, sorted by time."""
@@ -327,6 +359,8 @@ fn _generate_sorted_entries_from_entries(entries):
     for entry in entries:
         yield entry
 
+*/
+/*
 
 fn _generate_sorted_entries_from_file(opts, file_, filename):
     """Return all entries, sorted by time."""
@@ -335,8 +369,8 @@ fn _generate_sorted_entries_from_file(opts, file_, filename):
     for entry in entries:
         yield entry
 
-        */
-        /*
+*/
+/*
 
 fn _generate_incomplete_entries(opts, categories):
     incomplete_items = {}
@@ -353,6 +387,8 @@ fn _generate_incomplete_entries(opts, categories):
 
     return incomplete_items.itervalues()
 
+*/
+/*
 
 fn _do_list(opts, categories, category=None):
     width, _ = get_terminal_size()
@@ -360,6 +396,8 @@ fn _do_list(opts, categories, category=None):
         if not category or entry.get("category") == category:
             print_entry(entry, categories, width=width)
 
+*/
+/*
 
 fn _do_check(opts):
     with open(opts.logit_filename, "r") as f:
@@ -368,6 +406,8 @@ fn _do_check(opts):
 
     print("Looks good.")
 
+*/
+/*
 
 fn _do_todo_list(opts, categories):
     """Show a menu for completing todo items"""
@@ -393,13 +433,15 @@ fn _do_todo_list(opts, categories):
         "ref_id": unique_id_from_entry(entry),
         "complete": True
     })
-
-
+*/
+/*
 fn _get_installation_from_key_name(key_name):
     installation = key_name[27:63]
     if len(installation) == 36:
         return installation
 
+*/
+/*
 
 fn _get_installations_from_keys(keys):
     installations = set()
@@ -411,6 +453,8 @@ fn _get_installations_from_keys(keys):
 
     return installations
 
+*/
+/*
 
 fn _get_latest_key(keys, installation):
     """Get the latest key for an installation."""
@@ -465,6 +509,8 @@ fn _generate_merged_entries_from_s3(opts):
     for entry in _generate_sorted_entries_from_entries(entries.values()):
         yield entry
 
+*/
+/*
 
 fn _do_merge(categories, opts):
     """Show the contents when merged from all installations."""
@@ -473,31 +519,30 @@ fn _do_merge(categories, opts):
         print_entry(entry, categories, width=width)
 
 */
+
 fn main() {
   let argv = get_args()[1:]
   # Parse command line arguments
   let parser = get_arg_parser()
   with let command = parse_args(parser, argv) {
     handle_command(command)
-
   } else error {
     log(Error, "Error parsing arguments: ${error}")
   }
-
 }
 
 fn handle_command(command) {
-  log(Info, command)
   match command {
-    ListNotes    => list_notes()
     GetNote(key) => get_note(key)
+    ListNotes    => list_notes()
+    ShowVersion  => log(Info, get_version())
   }
 }
 
 fn list_notes() {
-  with let fd = open("$HOME/logit.txt") {
-    for line in readlines(fd) {
-      print(line)
+  with let file = open("/Users/wbbradley/logit.txt") {
+    for line in readlines(file) {
+      print(strip(line))
     }
   } else errno {
     log(Error, errno)
