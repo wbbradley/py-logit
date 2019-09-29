@@ -49,7 +49,6 @@ def encode_aes(cipher, secret):
 
 def encrypt_json(secret_key, blob, file_):
     """Encrypt a json blob into a file stream in base64."""
-
     cipher = AES.new(secret_key)
     encoded = encode_aes(cipher, json.dumps(blob))
 

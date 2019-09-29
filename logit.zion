@@ -1,8 +1,10 @@
 import sys {get_args}
 import hash {Hashable, hash}
-import logging {log, Info, Error}
-import parser {choice, sequence, lift}
-import argparser {ArgParseState, ArgStep, parse_args, term, const, literal, flag}
+import logging {log, Info, Warn, Error}
+import parser {choice, sequence, lift, OK}
+import argparser {ArgParseState, parse_args, term, const, literal, flag}
+import json {parse_json, J, from_json}
+import note {Note}
 
 let LOGIT_FILENAME = "logit.txt"
 
@@ -534,15 +536,37 @@ fn main() {
 fn handle_command(command) {
   match command {
     GetNote(key) => get_note(key)
-    ListNotes    => list_notes()
+    ListNotes    => list_notes("/Users/wbbradley/logit.json")
     ShowVersion  => log(Info, get_version())
   }
 }
 
-fn list_notes() {
-  with let file = open("/Users/wbbradley/logit.txt") {
+fn parse_note_from_json(json J) => match from_json(json) {
+  Just(note) => resource_acquired(note, ||{})
+  Nothing    => ResourceFailure("parse_note_from_json: Malformed json ${json}")
+}
+
+fn parse_note_from_text(line String) WithElseResource Note String {
+  return match parse_json(line) {
+    Just(json) => parse_note_from_json(json)
+  } else {
+    ResourceFailure("parse_note_from_text: Unable to read json ${line}")
+  }
+}
+
+fn list_notes(filename String) {
+  var failed_lines = 0
+  with let file = open(filename) {
     for line in readlines(file) {
-      print(strip(line))
+      with let note = parse_note_from_text(line) {
+        print(note)
+      } else error {
+        failed_lines += 1
+        log(Warn, error)
+      }
+    }
+    if failed_lines != 0 {
+      log(Warn, "Failed to read ${failed_lines} entries from ${filename}")
     }
   } else errno {
     log(Error, errno)

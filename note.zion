@@ -1,0 +1,41 @@
+import json {JsonReader, from_json, JObject, JText, J}
+export {Note}
+
+
+struct Note {
+  timestamp    String
+  message      String
+  category     String
+  id           String
+  installation String
+}
+
+instance Str Note {
+  fn str(note) {
+    let Note(timestamp, message, category, id, installation) = note
+    return "${timestamp}: [${category}] ${message}"
+  }
+}
+
+instance JsonReader Note {
+  fn from_json(json J) Maybe Note {
+    match! json {
+      JObject(map) => match! (map["timestamp"],
+                             map["message"],
+                             map["category"],
+                             map["id"],
+                             map["installation"]) {
+          (Just(JText(timestamp)),
+           Just(JText(message)),
+           Just(JText(category)),
+           Just(JText(id)),
+           Just(JText(installation))) => return Just(Note(timestamp,
+                                                          message,
+                                                          category,
+                                                          id,
+                                                          installation))
+      }
+    }
+    return Nothing
+  }
+}
