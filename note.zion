@@ -36,33 +36,3 @@ instance JsonReader Note {
     return Nothing
   }
 }
-
-instance JsonReader a {
-  fn from_json(json J) Maybe a {
-    IF a IS struct {
-      if json is JObject(map) {
-        if TUPLE(map[STR(NAME(dim))] FOR dim IN a) is
-        TUPLE(Just(JCTOR_FROM_TYPE(TYPE(dim))(NAME(dim))) FOR dim IN a) {
-          return Just(CTOR(a)(NAME(dim) FOR dim in a)
-        }
-      }
-      return Nothing
-    } ELSE IF a is data {
-    }
-    if json is JObject(map) {
-      if (map["timestamp"],
-          map["message"],
-          map["category"],
-          map["id"],
-          map["installation"]) is
-          (Just(JText(timestamp)),
-           Just(JText(message)),
-           Just(JText(category)),
-           Just(JText(id)),
-           Just(JText(installation))) {
-        return Just(Note(timestamp, message, category, id, installation))
-      }
-    }
-    return Nothing
-  }
-}
