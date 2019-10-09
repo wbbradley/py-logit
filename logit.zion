@@ -5,6 +5,7 @@ import parser {choice, sequence, lift, OK}
 import argparser {ArgParseState, parse_args, term, const, literal, flag}
 import json {parse_json, J, from_json}
 import note {Note}
+import readline {readline}
 
 let LOGIT_FILENAME = "logit.txt"
 
@@ -32,11 +33,14 @@ instance Str Field {
   }
 }
 
+newtype Category = Category(String, Tracking, [Field])
+/*
 struct Category {
   category_description String
   tracking             Tracking
   extra_fields         [Field]
 }
+*/
 
 instance Str Category {
   fn str(cat) => match cat {
@@ -57,8 +61,8 @@ instance Str Command {
     ShowVersion  => "ShowVersion"
   }
 }
-fn get_note_command(x) => GetNote(str(x))
 
+fn get_note_command(x) => GetNote(str(x))
 
 fn get_categories() Map String Category {
   /* Get categories. */
@@ -576,8 +580,11 @@ fn list_notes(filename String) {
 
 fn get_note(key String) {
   let categories = get_categories()
-  if categories[key] is Just(category) {
-    print("Get a note for category ${category}")
+  if categories[key] is Just(Category(category_description, tracking, extra_fields)) {
+    let line = readline("${category_description}: ")
+    print("Got line ${repr(line)}")
+  } else {
+
   }
 }
 
