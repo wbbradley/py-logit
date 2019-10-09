@@ -3,7 +3,7 @@ set -e
 
 # Make sure needed tools are available
 git --version > /dev/null
-$PYTHON --version > /dev/null
+python --version > /dev/null
 
 if [ ! -f install.sh ]; then
 	echo "Please run install.sh from the directory you cloned 'logit' into..."
