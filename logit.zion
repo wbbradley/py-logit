@@ -57,6 +57,8 @@ instance Str Command {
     ShowVersion  => "ShowVersion"
   }
 }
+fn get_note_command(x) => GetNote(str(x))
+
 
 fn get_categories() Map String Category {
   /* Get categories. */
@@ -74,13 +76,12 @@ fn get_version() String {
   return "0.1"
 }
 
-
 fn get_arg_parser()  {
   # Get the argument parser
   return choice([
     const("list", ListNotes),
     const("version", ShowVersion),
-    lift(compose(GetNote, str), choice([literal(key) for key in keys(get_categories())])),
+    lift(get_note_command, choice([literal(key) for key in keys(get_categories())])),
   ])
 }
 
