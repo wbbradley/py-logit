@@ -151,6 +151,12 @@ def get_arg_parser():
         help='Print the current logit log',
     )
     parser.add_argument(
+        '--json',
+        dest='as_json',
+        action='store_true',
+        default=False,
+        help='When listing, print as json.')
+    parser.add_argument(
         '-M',
         dest='merge',
         action='store_true',
@@ -273,7 +279,8 @@ def logit(opts, entry, timestamp):
         entry['installation'] = get_install_id()
 
         assert 'category' in entry
-        entry['message'] = entry.get('message') or get_console_input('Notes: ')
+        entry['message'] = entry.get('message') or get_console_input('Notes: ',
+                                                                     use_vim=True)
 
         if entry.get('message'):
             with open(opts.logit_filename, 'a') as f:
@@ -326,7 +333,7 @@ def _do_logit(opts):
 
     fields = categories[category].get('fields') or {}
     for field, description in fields.items():
-        value = get_console_input(description)
+        value = get_console_input(description, use_vim=True)
         if value:
             entry[field] = value
 
@@ -353,28 +360,25 @@ def print_entry(entry, categories, prefix='', width=0):
     if not timestamp:
         timestamp = '-no timestamp-'
 
-    category = (
-        entry.get('category', 'note').rjust(_longest_category(categories))
-    )
-    prefix_len = len('{prefix}{timestamp} : {category} : '.format(
+    category = entry.get('category', 'note')
+    prefix_len = len('{prefix}{timestamp} : {category}'.format(
         prefix=prefix,
         timestamp=timestamp,
         category=category,
     ))
-    pretty_prefix = (
-        (bcolors.MENU + prefix + bcolors.ENDC +
-         bcolors.TIMESTAMP + '{timestamp}' + bcolors.ENDC +
-         ' : ' + bcolors.CATEGORY + '{category}' + bcolors.ENDC +
-         ' : ').format(timestamp=timestamp, category=category)
-    )
+    pretty_prefix = ((bcolors.MENU + prefix + bcolors.ENDC + bcolors.TIMESTAMP
+                      + '{timestamp}' + bcolors.ENDC + ' : ' + bcolors.CATEGORY
+                      + '{category}' + bcolors.ENDC)
+                     .format(timestamp=timestamp, category=category))
     message = entry.get('message')
-    if prefix_len >= width:
-        print(pretty_prefix + message)
-    else:
-        lines = textwrap.wrap(message, width - prefix_len) or ['']
-        print(pretty_prefix + lines[0])
-        for line in lines[1:]:
-            print(' ' * prefix_len + line)
+    print(pretty_prefix)
+    for paragraph in message.splitlines():
+        lines = textwrap.wrap(paragraph, width,
+                              initial_indent=' '*4,
+                              subsequent_indent=' '*4,
+                              replace_whitespace=False) or ['']
+        for line in lines:
+            print(line)
 
 
 def _generate_entries_from_file(opts, file_, filename):
@@ -454,7 +458,10 @@ def _do_list(opts, categories, category=None):
     width, _ = get_terminal_size()
     for entry in _generate_entries_from_local_file(opts, sort=True):
         if not category or entry.get('category') == category:
-            print_entry(entry, categories, width=width)
+            if opts.as_json:
+                print(json.dumps(entry))
+            else:
+                print_entry(entry, categories, width=width)
 
 
 def _do_check(opts):

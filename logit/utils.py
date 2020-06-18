@@ -1,5 +1,9 @@
 import errno
 import os
+import sys
+import tempfile
+import subprocess
+
 from os.path import join, abspath, expanduser, dirname
 
 
@@ -78,6 +82,24 @@ class bcolors:
     ENDC = '\033[0m'
 
 
-def get_console_input(prompt):
-    """Get console input."""
-    return input(prompt)
+def get_console_input(prompt, use_vim=False):
+    """Get input."""
+    if use_vim:
+        initial_message = "# %s\n\n" % prompt
+
+        with tempfile.NamedTemporaryFile(suffix=".tmp") as tf:
+            tf.write(initial_message.encode('utf-8'))
+            tf.flush()
+
+            subprocess.call(["vim", tf.name, "+normal G"])
+
+            with open(tf.name, 'r') as f:
+                lines = (
+                    f.read()
+                    .replace('\n\n', '\0')
+                    .replace('\n', ' ')
+                    .replace('\0', '\n')).splitlines()
+            return '\n'.join([line.strip() for line in lines if not
+                              line.startswith('#')]).strip()
+    else:
+        return input(prompt).strip()
