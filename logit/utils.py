@@ -93,9 +93,11 @@ def get_console_input(prompt, use_vim=False):
 
             subprocess.call(["vim", tf.name, "+normal G"])
 
-            with open(tf.name, 'r') as f:
+            with open(tf.name, 'rt') as f:
+                text = ''.join(line for line in f.readlines()
+                               if not line.startswith('#'))
                 lines = (
-                    f.read()
+                    text
                     .replace('\n\n', '\0')
                     .replace('\n', ' ')
                     .replace('\0', '\n')).splitlines()
