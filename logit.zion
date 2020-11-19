@@ -1,5 +1,5 @@
 import sys {get_args}
-import hash {Hashable, hash}
+import os {getenv}
 import logging {log, Info, Warn, Error}
 import parser {choice, sequence, lift, OK}
 import argparser {ArgParseState, parse_args, term, const, literal, flag}
@@ -75,10 +75,8 @@ fn get_categories() Map String Category {
 }
 
 
-fn get_version() String {
-  /* Get version. */
-  return "0.1"
-}
+/* Get version. */
+let version = "0.1"
 
 fn get_arg_parser()  {
   # Get the argument parser
@@ -540,9 +538,17 @@ fn main() {
 
 fn handle_command(command) {
   match command {
-    GetNote(key) => get_note(key)
-    ListNotes    => list_notes("/Users/wbbradley/logit.json")
-    ShowVersion  => log(Info, get_version())
+    GetNote(key) {
+      if getenv("HOME") is Just(homedir) {
+        get_note(homedir, key)
+      }
+    }
+    ListNotes {
+      if getenv("HOME") is Just(homedir) {
+        list_notes("${homedir}/logit.json")
+      }
+    }
+    ShowVersion => log(Info, version)
   }
 }
 
@@ -562,7 +568,8 @@ fn parse_note_from_text(line String) WithElseResource Note String {
 fn list_notes(filename String) {
   var failed_lines = 0
   with let file = open(filename) {
-    for line in readlines(file) {
+    print("reading lines from ${filename}")
+    for line in file.readlines {
       with let note = parse_note_from_text(line) {
         print(note)
       } else error {
@@ -574,17 +581,16 @@ fn list_notes(filename String) {
       log(Warn, "Failed to read ${failed_lines} entries from ${filename}")
     }
   } else errno {
-    log(Error, errno)
+    log(Error, "${errno}: trying to open ${filename}")
   }
 }
 
-fn get_note(key String) {
+fn get_note(homedir String, key String) {
   let categories = get_categories()
   if categories[key] is Just(Category(category_description, tracking, extra_fields)) {
     let line = readline("${category_description}: ")
-    print("Got line ${repr(line)}")
-  } else {
-
+    print("Got line ${line}")
+    print("TODO: print line to ${homedir}/logit.txt, encrypted")
   }
 }
 

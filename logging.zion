@@ -1,5 +1,3 @@
-export {log, Debug, Info, Warn, Error, Fatal}
-
 data EntryType {
   Debug
   Info

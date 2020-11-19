@@ -1,5 +1,4 @@
 import json {JsonReader, from_json, JObject, JText, J}
-export {Note}
 
 
 struct Note {
